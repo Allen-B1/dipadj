@@ -94,6 +94,10 @@
     function onload() {
         container.style.width = img.width + "px";
         container.style.height = img.height + "px";
+
+        let svg = document.getElementsByTagName("svg")[0];
+        svg.style.width = img.width + "px";
+        svg.style.height = img.height + "px";
     }
 ;
     async function onchange() {
@@ -116,7 +120,7 @@
 
             coast_of: null,
             is_sea: false,
-            label: "node-" + id.slice(0, 4)
+            label: "",
         };
 
         selectedNode = id;
@@ -238,6 +242,12 @@
                     return;
                 }
                 output.add(label);
+            }
+
+            if (output.has("")) {
+                let node = Object.values(nodes).filter(n => n.label == "")[0];
+                alert("You have an unlabeled node at (" + node.x + ", " + node.y + ")");
+                return;
             }
         }
 
@@ -437,12 +447,14 @@
     <img on:mousedown={onmousedown} src={image} id="img" bind:this={img} on:load={onload} />
     {#each Object.keys(nodes) as node_id}
         {@const node = nodes[node_id]}
+        {#if !(node.coast_of && mode == "army")}
         <div class="node" class:selected={node_id == selectedNode} class:sea={node.is_sea}
             class:coast={node.coast_of != null}
             on:mouseup={(e) => nodeMouseUp(e, node_id)}
             on:mousedown={(e) => nodeMouseDown(e, node_id)}
             on:contextmenu={(e) => { e.preventDefault(); return false}}
             id={"node-" + node_id} style={"top:" + (node.y-8) + "px;left:" + (node.x-8) + "px"}></div>
+        {/if}
     {/each}
 
     <div class="panel" id="mode-panel" style="top:16px;left:16px;right:auto;display:flex;flex-direction:row;padding:0">
@@ -504,4 +516,4 @@
 
     <button class="button" on:click={exprt} id="export-button">Export</button>
 </main>
-<input type="file" id="input" on:change={onchange} bind:this={input} class:hide={image != null} />
+<input type="file" id="input" on:change={onchange} bind:this={input} class:hide={image != null} accept="image/svg+xml"/>
