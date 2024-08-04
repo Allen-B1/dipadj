@@ -309,6 +309,8 @@
 -o-user-select: none;
     }
 
+    .panel, #export-button {
+        z-index: 3; }
     .panel {
         position: fixed;
         padding: 16px;
