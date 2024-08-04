@@ -218,6 +218,8 @@
     }
 
     function exprt() {
+        let id = genId().slice(0, 5);
+
         function noderepr(node_id: string) : Array<[string, string]> {
             let node = nodes[node_id];
             if (node.coast_of == null) {
@@ -279,10 +281,26 @@
 
         let a = document.createElement("a");
         a.className = "hide";
-        a.href = "data:application/json;base64," + btoa(JSON.stringify(json));
-        a.download = "adj.json";
         document.body.appendChild(a);
+
+        a.href = "data:application/json;base64," + btoa(JSON.stringify(json));
+        a.download = "adj-" + id + ".json";
         a.click();
+
+        let positions: Record<string, {x : number, y: number}> = {};
+        for (let node of Object.values(nodes)) {
+            if (node.coast_of) {
+                positions[nodes[node.coast_of].label + "-" + node.label] = { x: node.x, y: node.y };
+            } else {
+                positions[node.label] = { x: node.x, y: node.y };
+            }
+        }
+
+        setTimeout(() => {
+            a.href = "data:application/json;base64," + btoa(JSON.stringify(positions));
+            a.download = "pos-" + id + ".json";
+            a.click();
+        }, 500);
     }
 </script>
 
