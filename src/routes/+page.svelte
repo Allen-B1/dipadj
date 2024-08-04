@@ -253,7 +253,7 @@
                 continue;
             }
 
-            json.provinces[node.label] = {
+            json.provinces[node.label] = { 
                 is_sea: node.is_sea,
                 coasts: Object.keys(nodes).filter(cid => nodes[cid].coast_of == node_id).map(cid => nodes[cid].label),
             };
