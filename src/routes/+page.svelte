@@ -227,6 +227,18 @@
             }
         }
 
+        {
+            let labels = Object.values(nodes).filter(n => n.coast_of == null).map(n => n.label);
+            let output = new Set();
+            for (let label of labels) {
+                if (output.has(label)) {
+                    alert("Can't export: duplicate label: " + label);
+                    return;
+                }
+                output.add(label);
+            }
+        }
+
         let json = {
             provinces: {},
             fleet_adj: [],
