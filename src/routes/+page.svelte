@@ -7,6 +7,7 @@
 
         is_sea: boolean,
         label: string,
+        name: string,
     }
 
     interface Line {
@@ -121,6 +122,7 @@
             coast_of: null,
             is_sea: false,
             label: "",
+            name: ""
         };
 
         selectedNode = id;
@@ -244,8 +246,9 @@
                 output.add(label);
             }
 
-            if (output.has("")) {
-                let node = Object.values(nodes).filter(n => n.label == "")[0];
+            let nodes_without_labels = Object.values(nodes).filter(n => n.label == "");
+            if (nodes_without_labels.length != 0) {
+                let node = nodes[0];
                 alert("You have an unlabeled node at (" + node.x + ", " + node.y + ")");
                 return;
             }
@@ -297,12 +300,12 @@
         a.download = "adj-" + id + ".json";
         a.click();
 
-        let positions: Record<string, {x : number, y: number}> = {};
+        let positions: Record<string, {name? : string, x : number, y: number}> = {};
         for (let node of Object.values(nodes)) {
             if (node.coast_of) {
                 positions[nodes[node.coast_of].label + "-" + node.label] = { x: node.x, y: node.y };
             } else {
-                positions[node.label] = { x: node.x, y: node.y };
+                positions[node.label] = { x: node.x, y: node.y, name: node.name };
             }
         }
 
@@ -470,27 +473,36 @@
             </div>
             {#if nodes[selectedNode].coast_of != null}
             <div class="flex">
-                <label>Coast of</label> <span class="tag">{nodes[nodes[selectedNode].coast_of].label} <a class="delete" on:click={() => nodes[selectedNode].coast_of = null}></a></span>
+                <label for="coast-of">Coast of</label> <span id="coast-of" class="tag">{nodes[nodes[selectedNode].coast_of].label} <a class="delete" on:click={() => nodes[selectedNode].coast_of = null}></a></span>
             </div>
+            {/if}
+            {#if nodes[selectedNode].coast_of == null}
+                <div class="flex">
+                    <label for="name">Name</label> <input class="entry" id="name" bind:value={nodes[selectedNode].name} />
+                </div>
             {/if}
             <div class="flex">
                 <label for="sea">Sea Province</label> <input id="sea" bind:checked={nodes[selectedNode].is_sea} type="checkbox" />
             </div>
             <div class="flex">
                 <label for="adj">Land adjacencies</label>
+                <span>
                 {#each Object.entries(army_lines)
                     .filter(([s, l]) => l.node1 == selectedNode || l.node2 == selectedNode)
                     .map(([s, l]) => (l.node1 == selectedNode ? [s, l] : [s, { node1 : l.node2, node2: l.node1 }])) as [line_id, l]}
                     <span class="tag">{nodes[l.node2].label} <a class="delete" on:click={() => {delete army_lines[line_id]; army_lines = army_lines}}></a></span>
                 {/each}
+                </span>
             </div>
             <div class="flex">
                 <label for="adj">Sea adjacencies</label>
+                <span>
                 {#each Object.entries(fleet_lines)
                     .filter(([s, l]) => l.node1 == selectedNode || l.node2 == selectedNode)
                     .map(([s, l]) => (l.node1 == selectedNode ? [s, l] : [s, { node1 : l.node2, node2: l.node1 }])) as [line_id, l]}
                     <span class="tag">{nodes[l.node2].label} <a class="delete" on:click={() => {delete fleet_lines[line_id]; fleet_lines = fleet_lines }}></a></span>
                 {/each}
+                </span>
             </div>
         </div>
     {/if}
