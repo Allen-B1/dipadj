@@ -310,7 +310,11 @@
         }
 
         setTimeout(() => {
-            a.href = "data:application/json;base64," + btoa(JSON.stringify(positions));
+            a.href = "data:application/json;base64," + btoa(JSON.stringify({
+                provinces: positions,
+                width: img.width,
+                height: img.height
+            }));
             a.download = "pos-" + id + ".json";
             a.click();
         }, 500);
