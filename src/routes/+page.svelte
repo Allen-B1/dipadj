@@ -446,6 +446,11 @@
         bottom: 16px;
         right: 16px;
     }
+
+    label {
+        white-space: nowrap;
+        margin-right: 8px;
+    }
 </style>
 
 <svelte:window on:load={load} on:keydown={onkeydown} on:keyup={onkeyup} on:mousemove={onmousemove} on:mouseup={onmouseup} />
@@ -489,7 +494,7 @@
                 <label for="sea">Sea Province</label> <input id="sea" bind:checked={nodes[selectedNode].is_sea} type="checkbox" />
             </div>
             <div class="flex">
-                <label for="adj">Land adjacencies</label>
+                <label for="adj">Land adjacencies [{Object.values(army_lines).filter((l) => l.node1 == selectedNode || l.node2 == selectedNode).length}]</label>
                 <span>
                 {#each Object.entries(army_lines)
                     .filter(([s, l]) => l.node1 == selectedNode || l.node2 == selectedNode)
@@ -499,7 +504,7 @@
                 </span>
             </div>
             <div class="flex">
-                <label for="adj">Sea adjacencies</label>
+                <label for="adj">Sea adjacencies [{Object.values(fleet_lines).filter((l) => l.node1 == selectedNode || l.node2 == selectedNode).length}]</label>
                 <span>
                 {#each Object.entries(fleet_lines)
                     .filter(([s, l]) => l.node1 == selectedNode || l.node2 == selectedNode)
