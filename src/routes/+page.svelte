@@ -22,9 +22,9 @@
 
     function load() {
         image       = JSON.parse(localStorage.getItem("image"));
-        nodes       = JSON.parse(localStorage.getItem("nodes"));
-        army_lines  = JSON.parse(localStorage.getItem("army_lines"));
-        fleet_lines = JSON.parse(localStorage.getItem("fleet_lines"));
+        nodes       = JSON.parse(localStorage.getItem("nodes")) || {};
+        army_lines  = JSON.parse(localStorage.getItem("army_lines")) || {};
+        fleet_lines = JSON.parse(localStorage.getItem("fleet_lines")) || {};
 
         save = (key: string, obj: any) => {
             if (typeof localStorage == "object") {
@@ -319,6 +319,72 @@
             a.click();
         }, 500);
     }
+
+    let importButton: HTMLInputElement;
+    $: if (importButton) importButton.value = "";
+    $: if (importButton) importButton.addEventListener("change", async (ev) => {
+        let filePosData = null;
+        let fileAdjData = null;
+        for (let file of importButton.files || []) {
+            if (file) {
+                let text = await file.text();
+                if (file.name.endsWith(".svg")) {
+                    image = "data:image/svg+xml;base64," + btoa(text);
+                } else if (file.name.startsWith("pos-") && file.name.endsWith(".json")) {
+                    filePosData = JSON.parse(text);
+                } else if (file.name.startsWith("adj-") && file.name.endsWith(".json")) {
+                    fileAdjData = JSON.parse(text);
+                }
+            }
+        }
+
+        if (filePosData && fileAdjData) {
+            let newNodes: Record<string, Node> = {};
+            for (let abbr in fileAdjData.provinces) {
+                let prov = fileAdjData.provinces[abbr];
+                for (let coast of prov.coasts.concat([""])) {
+                    let id = abbr + (coast ? "-" + coast : "");
+                    newNodes[id] = {
+                        label: coast ? coast : abbr,
+                        name: coast ? "" : filePosData.provinces[abbr].name,
+
+                        x: filePosData.provinces[id].x,
+                        y: filePosData.provinces[id].y,
+
+                        coast_of: coast ? abbr : null,
+                        is_sea: prov.is_sea
+                    };
+                }
+            }
+
+            let newArmyLines: Record<string, Line> = {};
+            let newFleetLines: Record<string, Line> = {};
+
+            for (let [abbr1, abbr2] of fileAdjData.army_adj) {
+                if (getLine(newArmyLines, abbr1, abbr2)) continue;
+
+                let line_id = genId();
+                newArmyLines[line_id] = { node1: abbr1, node2: abbr2 };
+            }
+            for (let [[abbr1, coast1], [abbr2, coast2]] of fileAdjData.fleet_adj) {
+                if ((coast1 == "" && fileAdjData.provinces[abbr1].coasts.length != 0) || 
+                    (coast2 == "" && fileAdjData.provinces[abbr2].coasts.length != 0)) continue;
+
+                let id1 = abbr1 + (coast1 ? "-" + coast1 : "");
+                let id2 = abbr2 + (coast2 ? "-" + coast2 : "");
+                if (getLine(newFleetLines, id1, id2)) continue;
+
+                let line_id = genId();
+                newFleetLines[line_id] = { node1: id1, node2: id2 };
+            }
+
+            console.log(newNodes, newFleetLines, newArmyLines);
+
+            nodes = newNodes;
+            fleet_lines = newFleetLines;
+            army_lines = newArmyLines;
+        }
+    })
 </script>
 
 <svelte:head>
@@ -356,7 +422,7 @@
 -o-user-select: none;
     }
 
-    .panel, #export-button {
+    .panel, #export-button, #import-button {
         z-index: 3; }
     .panel {
         position: fixed;
@@ -434,18 +500,22 @@
         display: none;
     }
 
-    .button {
+    #import-button { visibility: hidden; }
+    .button, ::file-selector-button {
+        pointer-events: auto;
+        visibility: visible;
         color: #fff;
         border: 0;
         background: hsl(330, 50%, 45%);
         padding: 4px 8px; }
-    .button:active {
+    .button:active , ::file-selector-button:active {
         background: hsl(330, 50%, 35%); }
-    #export-button {
+    #export-button, #import-button {
         position: fixed;
         bottom: 16px;
-        right: 16px;
-    }
+        right: 16px; }
+    #import-button {
+        right: -84px; }
 
     label {
         white-space: nowrap;
@@ -487,7 +557,7 @@
             {/if}
             {#if nodes[selectedNode].coast_of == null}
                 <div class="flex">
-                    <label for="name">Name</label> <input class="entry" id="name" bind:value={nodes[selectedNode].name} />
+                    <label for="name">Name</label> <input class="efntry" id="name" bind:value={nodes[selectedNode].name} />
                 </div>
             {/if}
             <div class="flex">
@@ -498,7 +568,9 @@
                 <span>
                 {#each Object.entries(army_lines)
                     .filter(([s, l]) => l.node1 == selectedNode || l.node2 == selectedNode)
-                    .map(([s, l]) => (l.node1 == selectedNode ? [s, l] : [s, { node1 : l.node2, node2: l.node1 }])) as [line_id, l]}
+                    .map(([s, l]) => (l.node1 == selectedNode ? [s, l] : [s, { node1 : l.node2, node2: l.node1 }]))
+                    .filter(([line_id, l]) => nodes[l.node1] && nodes[l.node2])
+                    as [line_id, l]}
                     <span class="tag">{nodes[l.node2].label} <a class="delete" on:click={() => {delete army_lines[line_id]; army_lines = army_lines}}></a></span>
                 {/each}
                 </span>
@@ -508,7 +580,8 @@
                 <span>
                 {#each Object.entries(fleet_lines)
                     .filter(([s, l]) => l.node1 == selectedNode || l.node2 == selectedNode)
-                    .map(([s, l]) => (l.node1 == selectedNode ? [s, l] : [s, { node1 : l.node2, node2: l.node1 }])) as [line_id, l]}
+                    .map(([s, l]) => (l.node1 == selectedNode ? [s, l] : [s, { node1 : l.node2, node2: l.node1 }]))
+                    .filter(([line_id, l]) => nodes[l.node1] && nodes[l.node2]) as [line_id, l]}
                     <span class="tag">{nodes[l.node2].label} <a class="delete" on:click={() => {delete fleet_lines[line_id]; fleet_lines = fleet_lines }}></a></span>
                 {/each}
                 </span>
@@ -524,7 +597,9 @@
             {@const line = active_lines[line_id]}
             {@const node1 = nodes[line.node1]}
             {@const node2 = nodes[line.node2]}
-            <line x1={node1.x} y1={node1.y} x2={node2.x} y2={node2.y} />
+            {#if node1 && node2}
+                <line x1={node1.x} y1={node1.y} x2={node2.x} y2={node2.y} />
+            {/if}
         {/each}
 
         {#each Object.keys(nodes) as node_id} 
@@ -535,6 +610,7 @@
         {/each}
     </svg>
 
+    <input type="file" multiple bind:this={importButton} id="import-button"  />
     <button class="button" on:click={exprt} id="export-button">Export</button>
 </main>
 <input type="file" id="input" on:change={onchange} bind:this={input} class:hide={image != null} accept="image/svg+xml"/>
